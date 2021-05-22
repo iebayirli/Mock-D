@@ -1,0 +1,10 @@
+{
+  "id": 123,
+  "name": "Stradivarius",
+  "desc": "İp Askılı Büstiyer",
+  "image": "https://cdn.fashiola.com.tr/L45422979/h-m-askili-ve-ribanali-ust.jpg",
+  "price": {
+    "value": 180,
+    "currency": "TL"
+  }
+}
