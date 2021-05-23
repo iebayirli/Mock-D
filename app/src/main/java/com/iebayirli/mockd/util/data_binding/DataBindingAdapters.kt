@@ -2,9 +2,12 @@ package com.iebayirli.mockd.util.data_binding
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.widget.BaseAdapter
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.databinding.BindingAdapter
+import androidx.databinding.ViewDataBinding
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textview.MaterialTextView
@@ -43,9 +46,13 @@ fun setLikeState(imageView: ShapeableImageView, state: Boolean) {
     if (state) {
         val unwrappedDrawable =
             AppCompatResources.getDrawable(imageView.context, R.drawable.ic_favorite)
-        val wrappedDrawable = DrawableCompat.wrap(unwrappedDrawable!!)
-        DrawableCompat.setTint(wrappedDrawable, Color.RED)
-        imageView.setImageDrawable(wrappedDrawable)
+        unwrappedDrawable?.apply {
+            val wrappedDrawable = DrawableCompat.wrap(this)
+            DrawableCompat.setTint(wrappedDrawable, Color.RED)
+            imageView.setImageDrawable(this)
+        } ?: run {
+            imageView.setImageResource(R.drawable.ic_favorite)
+        }
     } else {
         imageView.setImageResource(R.drawable.ic_favorite_border)
     }

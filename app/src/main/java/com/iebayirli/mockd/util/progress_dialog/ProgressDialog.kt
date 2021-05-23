@@ -32,8 +32,4 @@ class ProgressDialog(
         setCancelable(false)
 
     }
-
-    companion object {
-        private const val WIDTH_PERCENTAGE = 0.8
-    }
 }

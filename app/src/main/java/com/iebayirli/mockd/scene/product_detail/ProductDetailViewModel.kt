@@ -13,10 +13,7 @@ import com.iebayirli.mockd.repository.ProductRepository
 import com.iebayirli.mockd.service.ILikeClickListener
 import com.iebayirli.mockd.util.error_dialog.ErrorModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -40,6 +37,13 @@ class ProductDetailViewModel @Inject constructor(
     private val _refreshTimer = MutableLiveData<Int>(0)
     val refreshTimer: LiveData<Int> = _refreshTimer
 
+    private var firstInitialized: Boolean = false
+
+    /**
+     *
+     * Recurring call. It works repetitively in the given time.
+     *
+     */
     private val refreshSocialInfo by lazy {
         startCoroutineTimer(repeatMillis = REPEAT_TIME) {
             Log.i(TAG, "Fetched social info")
@@ -47,6 +51,11 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     *
+     * Countdown timer to update refresh timer on UI element.
+     *
+     */
     private val timer = object : CountDownTimer(REPEAT_TIME, 1000) {
         override fun onTick(millisUntilFinished: Long) {
             val seconds = (millisUntilFinished / 1000).toInt()
@@ -68,7 +77,10 @@ class ProductDetailViewModel @Inject constructor(
             apiCallWithFlow(
                 request = productRepository.getProductInfo(),
                 loading = { true },
-                collect = { postProductInfo(it) },
+                collect = {
+                    postProductInfo(it)
+                    return@apiCallWithFlow !firstInitialized
+                },
                 catch = {
                     handleError(
                         ErrorModel(
@@ -81,6 +93,9 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates Product value after service call.
+     */
     private fun postProductInfo(product: Product) {
         _product.value = product
     }
@@ -92,15 +107,22 @@ class ProductDetailViewModel @Inject constructor(
                 loading = {
                     Log.i(TAG, "flow onStart : Timer cancelled")
                     timer.cancel()
-                    false
+                    return@apiCallWithFlow !firstInitialized
                 },
                 collect = {
+                    /**
+                     * Obtained Job status and if it's not active we activated.
+                     * We are cancelling timer on every loading state, and start it again after obtained Social info.
+                     *
+                     */
                     if (!refreshSocialInfo.isActive) {
                         refreshSocialInfo.start()
                     }
                     Log.i(TAG, "flow collect : Timer started")
                     timer.start()
+                    firstInitialized = true
                     postSocialInfo(it)
+                    return@apiCallWithFlow false
                 },
                 catch = {
                     handleError(
@@ -114,12 +136,17 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates Social info after service call.
+     */
     private fun postSocialInfo(socialInfo: Social) {
         val tempSocialInfo = Social(
             likeCount = socialInfo.likeCount.plus(randomNum()),
             commentCounts = CommentCounts(
                 averageRating = socialInfo.commentCounts.averageRating,
-                anonymousCommentsCount = socialInfo.commentCounts.anonymousCommentsCount.plus(randomNum()),
+                anonymousCommentsCount = socialInfo.commentCounts.anonymousCommentsCount.plus(
+                    randomNum()
+                ),
                 memberCommentsCount = socialInfo.commentCounts.memberCommentsCount.plus(randomNum())
             )
         )
@@ -127,6 +154,16 @@ class ProductDetailViewModel @Inject constructor(
         _socialInfo.value = tempSocialInfo
     }
 
+    /**
+     *
+     * Repetitive action function using coroutines.
+     *
+     * Takes the delay and repeat times and you can do repetitive operations in the lambda function.
+     * Uses viewModelScope, in this way it attaches lifecycle and we don't need to worry about lifecycle.
+     *
+     * Returns Job.
+     *
+     */
     private fun startCoroutineTimer(
         delayMillis: Long = 0,
         repeatMillis: Long = 0,
@@ -143,6 +180,11 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Like button click listener functions.
+     *
+     * Manages like state and like count.
+     */
     override fun onLikeClicked() {
         if (_likeState.value!!) {
             _likeCount.value = _likeCount.value?.minus(1)
